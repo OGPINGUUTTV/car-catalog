@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FiveM Vehicle Catalog</title>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600&family=Roboto:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --panel-bg: #111111;
+            --accent-green: #74b72e;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --font-heading: 'Oswald', sans-serif;
+            --font-body: 'Roboto', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-display {
+            display: flex;
+            flex: 1;
+            padding: 40px;
+            background: radial-gradient(circle at center, #1a1a1a 0%, var(--bg-color) 70%);
+        }
+
+        .stats-panel {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .class-badge {
+            color: var(--accent-green);
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        .brand {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            margin-bottom: -10px;
+        }
+
+        .vehicle-name {
+            font-family: var(--font-heading);
+            font-size: 2.5rem;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .v-type {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-top: -5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+            font-size: 1.5rem;
+            font-family: var(--font-heading);
+        }
+
+        .price { color: var(--accent-green); }
+
+        .image-panel {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        .image-panel img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            filter: drop-shadow(0px 20px 30px rgba(0,0,0,0.8));
+        }
+
+        .selector-panel {
+            height: 250px;
+            background-color: var(--panel-bg);
+            border-top: 1px solid #333;
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filters input, .filters select {
+            background-color: #000;
+            border: 1px solid #333;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .vehicle-list {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .vehicle-card {
+            background-color: #050505;
+            border: 1px solid #333;
+            min-width: 200px;
+            height: 120px;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .vehicle-card:hover { border-color: #666; }
+        .vehicle-card.active { border-color: var(--accent-green); box-shadow: 0 0 10px rgba(116, 183, 46, 0.2); }
+        
+        .card-img-container {
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .card-img-container img {
+            max-height: 100%;
+            max-width: 100%;
+        }
+
+        .card-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .card-title {
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .no-data {
+            text-align: center;
+            width: 100%;
+            color: var(--text-muted);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-display">
+        <div class="stats-panel">
+            <div class="class-badge" id="display-class">CLASS</div>
+            <div class="brand" id="display-brand">BRAND</div>
+            <h1 class="vehicle-name" id="display-name">Select a Vehicle</h1>
+            <div class="v-type" id="display-type">TYPE</div>
+
+            <div class="price-row">
+                <span>PRICE</span>
+                <span class="price" id="display-price">--</span>
+            </div>
+        </div>
+
+        <div class="image-panel">
+            <img id="display-image" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100' height='100' fill='%23111'/></svg>" alt="Vehicle">
+        </div>
+    </div>
+
+    <div class="selector-panel">
+        <div class="filters">
+            <h3 style="margin:0; align-self:center; margin-right:20px; font-family:var(--font-heading);">SELECT A VEHICLE</h3>
+            <input type="text" placeholder="Search..." id="searchInput">
+            <select id="classFilter">
+                <option value="All">All Classes</option>
+            </select>
+        </div>
+
+        <div class="vehicle-list" id="vehicle-container">
+            <div class="no-data">Loading vehicles from database...</div>
+        </div>
+    </div>
+
+    <script>
+        // Paste your published Google Sheets CSV link here:
+        const sheetCsvUrl = 'PASTE_YOUR_GOOGLE_SHEET_CSV_LINK_HERE';
+
+        let vehicles = [];
+        let activeVehicle = null;
+
+        function formatPrice(priceVal) {
+            if (!priceVal || priceVal.trim() === "" || isNaN(priceVal.replace(/[^0-9.]/g, ''))) {
+                return "TBD / NOT SET";
+            }
+            let num = parseFloat(priceVal.replace(/[^0-9.]/g, ''));
+            return '$' + num.toLocaleString();
+        }
+
+        function initCatalog() {
+            Papa.parse(sheetCsvUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    vehicles = results.data.map((row, index) => ({
+                        id: 'car_' + index,
+                        brand: row['Brand'] || 'Unknown',
+                        name: row['Name'] || 'Vehicle',
+                        class: row['Class'] || 'N/A',
+                        type: row['Type'] || 'Standard',
+                        price: row['Price'] || '',
+                        image: row['Image URL'] || 'https://via.placeholder.com/600x300/111111/FFFFFF?text=No+Image'
+                    }));
+
+                    populateClassFilter();
+                    if (vehicles.length > 0) {
+                        updateMainDisplay(vehicles[0]);
+                    } else {
+                        document.getElementById('vehicle-container').innerHTML = '<div class="no-data">No vehicles found. Add some via the form!</div>';
+                    }
+                },
+                error: function(err) {
+                    document.getElementById('vehicle-container').innerHTML = '<div class="no-data">Error loading database. Check your CSV link.</div>';
+                }
+            });
+        }
+
+        function populateClassFilter() {
+            const filter = document.getElementById('classFilter');
+            const classes = [...new Set(vehicles.map(v => v.class))];
+            classes.forEach(cls => {
+                const opt = document.createElement('option');
+                opt.value = cls;
+                opt.innerText = cls + ' Class';
+                filter.appendChild(opt);
+            });
+        }
+
+        function updateMainDisplay(vehicle) {
+            activeVehicle = vehicle;
+            
+            document.getElementById('display-class').innerText = vehicle.class + ' CLASS';
+            document.getElementById('display-brand').innerText = vehicle.brand;
+            document.getElementById('display-name').innerText = vehicle.name;
+            document.getElementById('display-type').innerText = vehicle.type;
+            document.getElementById('display-price').innerText = formatPrice(vehicle.price);
+            document.getElementById('display-image').src = vehicle.image;
+
+            renderCards();
+        }
+
+        function renderCards() {
+            const container = document.getElementById('vehicle-container');
+            container.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterClass = document.getElementById('classFilter').value;
+
+            const filtered = vehicles.filter(vehicle => {
+                if (filterClass !== 'All' && vehicle.class !== filterClass) return false;
+                const fullName = (vehicle.brand + ' ' + vehicle.name + ' ' + vehicle.type).toLowerCase();
+                return fullName.includes(searchTerm);
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<div class="no-data">No matching vehicles found</div>';
+                return;
+            }
+
+            filtered.forEach(vehicle => {
+                const card = document.createElement('div');
+                card.className = `vehicle-card ${activeVehicle && activeVehicle.id === vehicle.id ? 'active' : ''}`;
+                card.onclick = () => updateMainDisplay(vehicle);
+
+                card.innerHTML = `
+                    <div class="card-title">${vehicle.brand} ${vehicle.name}</div>
+                    <div class="card-img-container">
+                        <img src="${vehicle.image}" alt="${vehicle.name}">
+                    </div>
+                    <div class="card-info">
+                        <span>${vehicle.type} (${vehicle.class})</span>
+                        <span>${formatPrice(vehicle.price)}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('input', renderCards);
+        document.getElementById('classFilter').addEventListener('change', renderCards);
+
+        if (sheetCsvUrl !== 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSgF3PAPi-AMINCNdKLwuD6qVfJk0IH7g07D2Hpry-ljO6jlIUwIlyMWvk5zSfNOhxgr-S48-EU_ZZr/pub?gid=543898983&single=true&output=csv') {
+            initCatalog();
+        } else {
+            document.getElementById('vehicle-container').innerHTML = '<div class="no-data">Please configure your Google Sheet link in the code.</div>';
+        }
+    </script>
+</body>
+</html>
